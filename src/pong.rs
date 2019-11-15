@@ -1,14 +1,18 @@
 use amethyst::{
     assets::{AssetStorage, Handle, Loader},
-    core::timing::Time,
-    core::transform::Transform,
-    ecs::prelude::{Component, DenseVecStorage},
+    core::{timing::Time, transform::Transform},
+    ecs::prelude::{Component, DenseVecStorage, Entity},
     prelude::*,
-    renderer::{Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture},
+    renderer::{
+        Camera, ImageFormat, SpriteRender, SpriteSheet, SpriteSheetFormat, Texture, Transparent,
+    },
+    ui::{Anchor, TtfFormat, UiText, UiTransform},
 };
 
-pub const ARENA_HEIGHT: f32 = 100.0;
-pub const ARENA_WIDTH: f32 = 100.0;
+use crate::audio::initialise_audio;
+
+pub const ARENA_HEIGHT: f32 = 512.0;
+pub const ARENA_WIDTH: f32 = 512.0;
 
 pub const PADDLE_HEIGHT: f32 = 16.0;
 pub const PADDLE_WIDTH: f32 = 4.0;
@@ -27,12 +31,18 @@ impl SimpleState for Pong {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
 
-        self.ball_spawn_timer.replace(1.0);
+        self.ball_spawn_timer.replace(3.0);
 
-        self.sprite_sheet_handle.replace(load_sprite_sheet(world));
+        self.sprite_sheet_handle
+            .replace(load_sprite_sheet(world, "texture/pong_spritesheet"));
+
+        let background_handle = load_sprite_sheet(world, "texture/background");
 
         initalise_camera(world);
         initalise_paddles(world, self.sprite_sheet_handle.clone().unwrap());
+        initialise_scoreboard(world);
+        initialise_audio(world);
+        initialise_background(world, background_handle.clone());
     }
 
     fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
@@ -116,12 +126,12 @@ fn initalise_paddles(world: &mut World, sprite_sheet: Handle<SpriteSheet>) {
         .build();
 }
 
-fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
+fn load_sprite_sheet(world: &mut World, path: &str) -> Handle<SpriteSheet> {
     let texture_handle = {
         let loader = world.read_resource::<Loader>();
         let texture_storage = world.read_resource::<AssetStorage<Texture>>();
         loader.load(
-            "texture/pong_spritesheet.png",
+            format!("{}.png", path),
             ImageFormat::default(),
             (),
             &texture_storage,
@@ -131,7 +141,7 @@ fn load_sprite_sheet(world: &mut World) -> Handle<SpriteSheet> {
     let loader = world.read_resource::<Loader>();
     let sprite_sheet_store = world.read_resource::<AssetStorage<SpriteSheet>>();
     loader.load(
-        "texture/pong_spritesheet.ron",
+        format!("{}.ron", path),
         SpriteSheetFormat(texture_handle),
         (),
         &sprite_sheet_store,
@@ -165,4 +175,86 @@ fn initialise_ball(world: &mut World, sprite_sheet_handle: Handle<SpriteSheet>) 
         })
         .with(local_transform)
         .build();
+}
+
+#[derive(Default)]
+pub struct ScoreBoard {
+    pub score_left: i32,
+    pub score_right: i32,
+}
+
+// contains ui text components
+pub struct ScoreText {
+    pub p1_score: Entity,
+    pub p2_score: Entity,
+}
+
+fn initialise_scoreboard(world: &mut World) {
+    let font = world.read_resource::<Loader>().load(
+        "font/square.ttf",
+        TtfFormat,
+        (),
+        &world.read_resource(),
+    );
+    let p1_transform = UiTransform::new(
+        "P1".to_string(),
+        Anchor::TopMiddle,
+        Anchor::TopMiddle,
+        -50.,
+        -50.,
+        1.,
+        200.,
+        50.,
+    );
+    let p2_transform = UiTransform::new(
+        "P2".to_string(),
+        Anchor::TopMiddle,
+        Anchor::TopMiddle,
+        50.,
+        -50.,
+        1.,
+        200.,
+        50.,
+    );
+
+    let p1_score = world
+        .create_entity()
+        .with(p1_transform)
+        .with(UiText::new(
+            font.clone(),
+            "0".to_string(),
+            [1., 1., 1., 1.],
+            50.,
+        ))
+        .build();
+
+    let p2_score = world
+        .create_entity()
+        .with(p2_transform)
+        .with(UiText::new(
+            font.clone(),
+            "0".to_string(),
+            [1., 1., 1., 1.],
+            50.,
+        ))
+        .build();
+
+    world.insert(ScoreText { p1_score, p2_score });
+}
+
+fn initialise_background(world: &mut World, sprite_sheet_handle: Handle<SpriteSheet>) -> Entity {
+    let mut transform = Transform::default();
+    transform.set_translation_z(-10.0);
+    let sprite = SpriteRender {
+        sprite_sheet: sprite_sheet_handle.clone(),
+        sprite_number: 0,
+    };
+
+    world
+        .create_entity()
+        .with(transform)
+        .with(sprite)
+        .named("background")
+        .with(Transparent)
+        .build()
 }
