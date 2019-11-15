@@ -1,6 +1,3 @@
-pub use self::ball::BounceBallSystem;
-pub use self::ball::MoveBallSystem;
-pub use self::paddle::PaddleSystem;
+pub use self::player::PlayerMovementSystem;
 
-mod ball;
-mod paddle;
+mod player;

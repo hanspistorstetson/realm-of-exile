@@ -11,6 +11,9 @@
   Amethyst 2D Starter
 </h1>
 
+https://old.reddit.com/r/Amethyst/comments/acburh/amethyst_2d_sprite_animation/
+https://community.amethyst.rs/t/games-made-with-amethyst/134?u=torkleyy
+
 This project template will get you from 0 to drawing something on the screen in no time. If you're looking for a more in-depth introduction to the engine, please have a look at [our book](https://book.amethyst.rs/stable/)!
 
 ## Quickstart
